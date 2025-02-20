@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -88,11 +87,10 @@ with tab1:
     
     # Average rentals by hour
     hourly_trend = date_filtered_df.groupby('hr')['cnt'].mean().reset_index()
-    fig = px.line(hourly_trend, x='hr', y='cnt',
-                  title='Average Rentals by Hour of Day',
-                  labels={'hr': 'Hour', 'cnt': 'Average Rentals'},
-                  markers=True)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=hourly_trend['hr'], y=hourly_trend['cnt'], mode='lines+markers', name='Average Rentals'))
     fig.update_layout(
+        title='Average Rentals by Hour of Day',
         xaxis_title="Hour (24-hour format)",
         yaxis_title="Average Number of Rentals",
         hovermode='x'
@@ -117,11 +115,10 @@ with tab2:
     daily_trend = date_filtered_df.groupby('weekday')['cnt'].mean().reset_index()
     daily_trend['weekday_name'] = daily_trend['weekday'].map(weekday_map)
     
-    fig = px.bar(daily_trend, x='weekday_name', y='cnt',
-                 title='Average Rentals by Day of Week',
-                 labels={'weekday_name': 'Day of Week', 'cnt': 'Average Rentals'},
-                 color='cnt')
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=daily_trend['weekday_name'], y=daily_trend['cnt'], name='Average Rentals'))
     fig.update_layout(
+        title='Average Rentals by Day of Week',
         xaxis_title="Day of Week",
         yaxis_title="Average Number of Rentals"
     )
@@ -131,11 +128,15 @@ with tab2:
     daily_user_trend = date_filtered_df.groupby('weekday')[['casual', 'registered']].mean().reset_index()
     daily_user_trend['weekday_name'] = daily_user_trend['weekday'].map(weekday_map)
     
-    fig = px.bar(daily_user_trend, x='weekday_name', 
-                 y=['casual', 'registered'],
-                 title='Casual vs Registered Users by Day',
-                 barmode='group',
-                 labels={'value': 'Average Rentals', 'variable': 'User Type'})
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=daily_user_trend['weekday_name'], y=daily_user_trend['casual'], name='Casual'))
+    fig.add_trace(go.Bar(x=daily_user_trend['weekday_name'], y=daily_user_trend['registered'], name='Registered'))
+    fig.update_layout(
+        title='Casual vs Registered Users by Day',
+        xaxis_title="Day of Week",
+        yaxis_title="Average Number of Rentals",
+        barmode='group'
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     # Key insights for daily pattern
@@ -157,11 +158,10 @@ with tab3:
     monthly_trend = date_filtered_df.groupby('mnth')['cnt'].mean().reset_index()
     monthly_trend['month_name'] = monthly_trend['mnth'].map(month_map)
     
-    fig = px.line(monthly_trend, x='month_name', y='cnt',
-                  title='Average Monthly Rentals Throughout the Year',
-                  labels={'month_name': 'Month', 'cnt': 'Average Rentals'},
-                  markers=True)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=monthly_trend['month_name'], y=monthly_trend['cnt'], mode='lines+markers', name='Average Rentals'))
     fig.update_layout(
+        title='Average Monthly Rentals Throughout the Year',
         xaxis_title="Month",
         yaxis_title="Average Number of Rentals",
         xaxis={'categoryorder': 'array',
@@ -190,17 +190,23 @@ with tab4:
     # Display metrics
     col1, col2 = st.columns(2)
     with col1:
-        fig = px.bar(yearly_trend, x='yr', y='sum',
-                     title='Total Rentals by Year',
-                     labels={'yr': 'Year', 'sum': 'Total Rentals'},
-                     color='sum')
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=yearly_trend['yr'], y=yearly_trend['sum'], name='Total Rentals'))
+        fig.update_layout(
+            title='Total Rentals by Year',
+            xaxis_title="Year",
+            yaxis_title="Total Rentals"
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        fig = px.line(yearly_trend, x='yr', y='mean',
-                      title='Average Daily Rentals by Year',
-                      labels={'yr': 'Year', 'mean': 'Average Rentals'},
-                      markers=True)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=yearly_trend['yr'], y=yearly_trend['mean'], mode='lines+markers', name='Average Rentals'))
+        fig.update_layout(
+            title='Average Daily Rentals by Year',
+            xaxis_title="Year",
+            yaxis_title="Average Rentals"
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     # Key insights for yearly trend
@@ -233,11 +239,14 @@ with tab5:
     
     with col1:
         st.subheader("Recency Distribution")
-        fig = px.histogram(rfm_df, x='recency',
-                          title='Days Since Last Rental',
-                          labels={'recency': 'Days', 'count': 'Number of Customers'},
-                          nbins=30)
-        fig.update_layout(showlegend=False)
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=rfm_df['recency'], nbinsx=30))
+        fig.update_layout(
+            title='Days Since Last Rental',
+            xaxis_title="Days",
+            yaxis_title="Number of Customers",
+            showlegend=False
+        )
         st.plotly_chart(fig, use_container_width=True)
         
         # Recency insights
@@ -246,11 +255,14 @@ with tab5:
     
     with col2:
         st.subheader("Frequency Distribution")
-        fig = px.histogram(rfm_df, x='frequency',
-                          title='Number of Rentals per Customer',
-                          labels={'frequency': 'Number of Rentals', 'count': 'Number of Customers'},
-                          nbins=30)
-        fig.update_layout(showlegend=False)
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=rfm_df['frequency'], nbinsx=30))
+        fig.update_layout(
+            title='Number of Rentals per Customer',
+            xaxis_title="Number of Rentals",
+            yaxis_title="Number of Customers",
+            showlegend=False
+        )
         st.plotly_chart(fig, use_container_width=True)
         
         # Frequency insights
@@ -259,11 +271,14 @@ with tab5:
     
     with col3:
         st.subheader("Total Rentals Distribution")
-        fig = px.histogram(rfm_df, x='total_rentals',
-                          title='Total Rentals by Customer',
-                          labels={'total_rentals': 'Total Rentals', 'count': 'Number of Customers'},
-                          nbins=30)
-        fig.update_layout(showlegend=False)
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=rfm_df['total_rentals'], nbinsx=30))
+        fig.update_layout(
+            title='Total Rentals by Customer',
+            xaxis_title="Total Rentals",
+            yaxis_title="Number of Customers",
+            showlegend=False
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 # Overall patterns summary
