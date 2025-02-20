@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set style for better visualization
+plt.style.use('seaborn-v0_8')  # Updated style name for newer versions
+sns.set_theme()  # Use seaborn's default theme
 
 # Page config
 st.set_page_config(page_title="Bike Rental Dashboard", layout="wide")
@@ -59,9 +63,9 @@ with st.sidebar:
 # Filter data
 date_filtered_df = main_data_df[
     (main_data_df['dteday'].dt.date >= start_date) & 
-    (main_data_df['dteday'].dt.date <= end_date) &
-    (main_data_df['season'].isin(selected_season)) &
-    (main_data_df['weathersit'].isin(selected_weather)) &
+    (main_data_df['dteday'].dt.date <= end_date) & 
+    (main_data_df['season'].isin(selected_season)) & 
+    (main_data_df['weathersit'].isin(selected_weather)) & 
     (main_data_df['temp'].between(temp_range[0], temp_range[1]))
 ]
 
@@ -87,22 +91,14 @@ with tab1:
     
     # Average rentals by hour
     hourly_trend = date_filtered_df.groupby('hr')['cnt'].mean().reset_index()
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=hourly_trend['hr'], y=hourly_trend['cnt'], mode='lines+markers', name='Average Rentals'))
-    fig.update_layout(
-        title='Average Rentals by Hour of Day',
-        xaxis_title="Hour (24-hour format)",
-        yaxis_title="Average Number of Rentals",
-        hovermode='x'
-    )
-    st.plotly_chart(fig, use_container_width=True)
     
-    # Key insights for hourly pattern
-    st.subheader("Key Insights - Hourly Pattern")
-    peak_hour = hourly_trend.loc[hourly_trend['cnt'].idxmax()]
-    low_hour = hourly_trend.loc[hourly_trend['cnt'].idxmin()]
-    st.write(f"- Peak rental hour: {int(peak_hour['hr']):02d}:00 with average {peak_hour['cnt']:.0f} rentals")
-    st.write(f"- Lowest rental hour: {int(low_hour['hr']):02d}:00 with average {low_hour['cnt']:.0f} rentals")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.lineplot(data=hourly_trend, x='hr', y='cnt', marker='o', ax=ax)
+    ax.set_title('Average Rentals by Hour of Day')
+    ax.set_xlabel('Hour (24-hour format)')
+    ax.set_ylabel('Average Number of Rentals')
+    ax.grid(True)
+    st.pyplot(fig)
 
 with tab2:
     st.header("Daily Rental Patterns")
@@ -115,36 +111,37 @@ with tab2:
     daily_trend = date_filtered_df.groupby('weekday')['cnt'].mean().reset_index()
     daily_trend['weekday_name'] = daily_trend['weekday'].map(weekday_map)
     
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=daily_trend['weekday_name'], y=daily_trend['cnt'], name='Average Rentals'))
-    fig.update_layout(
-        title='Average Rentals by Day of Week',
-        xaxis_title="Day of Week",
-        yaxis_title="Average Number of Rentals"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
     
-    # User type comparison by day
+    # Daily rentals
+    sns.barplot(data=daily_trend, x='weekday_name', y='cnt', ax=ax1)
+    ax1.set_title('Average Rentals by Day of Week')
+    ax1.set_xlabel('Day of Week')
+    ax1.set_ylabel('Average Number of Rentals')
+    plt.xticks(rotation=45)
+    
+    # User type comparison
     daily_user_trend = date_filtered_df.groupby('weekday')[['casual', 'registered']].mean().reset_index()
     daily_user_trend['weekday_name'] = daily_user_trend['weekday'].map(weekday_map)
     
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=daily_user_trend['weekday_name'], y=daily_user_trend['casual'], name='Casual'))
-    fig.add_trace(go.Bar(x=daily_user_trend['weekday_name'], y=daily_user_trend['registered'], name='Registered'))
-    fig.update_layout(
-        title='Casual vs Registered Users by Day',
-        xaxis_title="Day of Week",
-        yaxis_title="Average Number of Rentals",
-        barmode='group'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    daily_user_trend_melted = pd.melt(daily_user_trend, 
+                                     id_vars=['weekday_name'],
+                                     value_vars=['casual', 'registered'],
+                                     var_name='user_type',
+                                     value_name='rentals')
     
-    # Key insights for daily pattern
-    st.subheader("Key Insights - Daily Pattern")
-    peak_day = daily_trend.loc[daily_trend['cnt'].idxmax()]
-    low_day = daily_trend.loc[daily_trend['cnt'].idxmin()]
-    st.write(f"- Busiest day: {peak_day['weekday_name']} with average {peak_day['cnt']:.0f} rentals")
-    st.write(f"- Slowest day: {low_day['weekday_name']} with average {low_day['cnt']:.0f} rentals")
+    sns.barplot(data=daily_user_trend_melted, 
+                x='weekday_name', 
+                y='rentals',
+                hue='user_type',
+                ax=ax2)
+    ax2.set_title('Casual vs Registered Users by Day')
+    ax2.set_xlabel('Day of Week')
+    ax2.set_ylabel('Average Number of Rentals')
+    plt.xticks(rotation=45)
+    
+    plt.tight_layout()
+    st.pyplot(fig)
 
 with tab3:
     st.header("Monthly Rental Patterns")
@@ -154,27 +151,17 @@ with tab3:
                  5: 'May', 6: 'June', 7: 'July', 8: 'August',
                  9: 'September', 10: 'October', 11: 'November', 12: 'December'}
     
-    # Monthly pattern
     monthly_trend = date_filtered_df.groupby('mnth')['cnt'].mean().reset_index()
     monthly_trend['month_name'] = monthly_trend['mnth'].map(month_map)
     
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=monthly_trend['month_name'], y=monthly_trend['cnt'], mode='lines+markers', name='Average Rentals'))
-    fig.update_layout(
-        title='Average Monthly Rentals Throughout the Year',
-        xaxis_title="Month",
-        yaxis_title="Average Number of Rentals",
-        xaxis={'categoryorder': 'array',
-               'categoryarray': list(month_map.values())}
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Key insights for monthly pattern
-    st.subheader("Key Insights - Monthly Pattern")
-    peak_month = monthly_trend.loc[monthly_trend['cnt'].idxmax()]
-    low_month = monthly_trend.loc[monthly_trend['cnt'].idxmin()]
-    st.write(f"- Peak month: {peak_month['month_name']} with average {peak_month['cnt']:.0f} rentals")
-    st.write(f"- Lowest month: {low_month['month_name']} with average {low_month['cnt']:.0f} rentals")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.lineplot(data=monthly_trend, x='month_name', y='cnt', marker='o')
+    ax.set_title('Average Monthly Rentals Throughout the Year')
+    ax.set_xlabel('Month')
+    ax.set_ylabel('Average Number of Rentals')
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    st.pyplot(fig)
 
 with tab4:
     st.header("Yearly Rental Trends")
@@ -187,27 +174,23 @@ with tab4:
     yoy_growth = ((yearly_trend['sum'].iloc[1] - yearly_trend['sum'].iloc[0]) / 
                   yearly_trend['sum'].iloc[0] * 100)
     
-    # Display metrics
     col1, col2 = st.columns(2)
+    
     with col1:
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=yearly_trend['yr'], y=yearly_trend['sum'], name='Total Rentals'))
-        fig.update_layout(
-            title='Total Rentals by Year',
-            xaxis_title="Year",
-            yaxis_title="Total Rentals"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.barplot(data=yearly_trend, x='yr', y='sum')
+        ax.set_title('Total Rentals by Year')
+        ax.set_xlabel('Year')
+        ax.set_ylabel('Total Rentals')
+        st.pyplot(fig)
     
     with col2:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=yearly_trend['yr'], y=yearly_trend['mean'], mode='lines+markers', name='Average Rentals'))
-        fig.update_layout(
-            title='Average Daily Rentals by Year',
-            xaxis_title="Year",
-            yaxis_title="Average Rentals"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.pointplot(data=yearly_trend, x='yr', y='mean')
+        ax.set_title('Average Daily Rentals by Year')
+        ax.set_xlabel('Year')
+        ax.set_ylabel('Average Rentals')
+        st.pyplot(fig)
     
     # Key insights for yearly trend
     st.subheader("Key Insights - Yearly Trend")
@@ -234,52 +217,28 @@ with tab5:
     # Rename columns
     rfm_df.columns = ['customer_id', 'recency', 'frequency', 'total_rentals']
     
-    # Create three columns for RFM metrics
-    col1, col2, col3 = st.columns(3)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
-    with col1:
-        st.subheader("Recency Distribution")
-        fig = go.Figure()
-        fig.add_trace(go.Histogram(x=rfm_df['recency'], nbinsx=30))
-        fig.update_layout(
-            title='Days Since Last Rental',
-            xaxis_title="Days",
-            yaxis_title="Number of Customers",
-            showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Recency insights
-        avg_recency = rfm_df['recency'].mean()
-        st.markdown(f"**Average Days Since Last Rental:** {avg_recency:.1f} days")
+    # Recency Distribution
+    sns.histplot(data=rfm_df, x='recency', bins=30, ax=axes[0])
+    axes[0].set_title('Days Since Last Rental')
+    axes[0].set_xlabel('Days')
+    axes[0].set_ylabel('Number of Customers')
     
-    with col2:
-        st.subheader("Frequency Distribution")
-        fig = go.Figure()
-        fig.add_trace(go.Histogram(x=rfm_df['frequency'], nbinsx=30))
-        fig.update_layout(
-            title='Number of Rentals per Customer',
-            xaxis_title="Number of Rentals",
-            yaxis_title="Number of Customers",
-            showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Frequency insights
-        avg_frequency = rfm_df['frequency'].mean()
-        st.markdown(f"**Average Rentals per Customer:** {avg_frequency:.1f}")
+    # Frequency Distribution
+    sns.histplot(data=rfm_df, x='frequency', bins=30, ax=axes[1])
+    axes[1].set_title('Number of Rentals per Customer')
+    axes[1].set_xlabel('Number of Rentals')
+    axes[1].set_ylabel('Number of Customers')
     
-    with col3:
-        st.subheader("Total Rentals Distribution")
-        fig = go.Figure()
-        fig.add_trace(go.Histogram(x=rfm_df['total_rentals'], nbinsx=30))
-        fig.update_layout(
-            title='Total Rentals by Customer',
-            xaxis_title="Total Rentals",
-            yaxis_title="Number of Customers",
-            showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # Total Rentals Distribution
+    sns.histplot(data=rfm_df, x='total_rentals', bins=30, ax=axes[2])
+    axes[2].set_title('Total Rentals by Customer')
+    axes[2].set_xlabel('Total Rentals')
+    axes[2].set_ylabel('Number of Customers')
+    
+    plt.tight_layout()
+    st.pyplot(fig)
 
 # Overall patterns summary
 st.markdown("---")
